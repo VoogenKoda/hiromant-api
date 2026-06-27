@@ -7,3 +7,4 @@ pillow
 opencv-python-headless
 numpy
 psycopg2-binary
+python-multipart
