@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   hiromant-api:
-    build: .
+    image: ghcr.io/voogenkoda/hiromant-api:latest
     container_name: hiromant-api
     restart: unless-stopped
     ports:
