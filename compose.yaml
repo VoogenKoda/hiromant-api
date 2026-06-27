@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  hiromant-api:
+    build: .
+    container_name: hiromant-api
+    restart: unless-stopped
+    ports:
+      # Pordib VPS-i pordi 8002 konteineri pordile 8002
+      # Kui kasutad Nginx Proxy Manageri vms, võid seda muuta
+      - "8002:8002"
+    env_file:
+      - .env
+    environment:
+      - WORKERS=4 # FastAPI (Uvicorn) workerite arv
+    # Kui vajad lisamahte andmebaasi jaoks, saad siin volumes määrata
+    # volumes:
+    #   - ./data:/app/data
