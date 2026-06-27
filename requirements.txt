@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+google-genai
+pillow
+opencv-python-headless
+numpy
+psycopg2-binary
