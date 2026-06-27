@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # Laeme juurkausta .env faili
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
-from api.routers import analyze, astrology, payments, tarot
+from routers import analyze, astrology, payments, tarot
 
 app = FastAPI(title="Uhhuu SaaS API")
 

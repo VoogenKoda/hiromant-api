@@ -4,8 +4,8 @@ from PIL import Image
 from google import genai
 import os
 import json
-from api.models import HandAnalysis
-from api.services.database import get_valid_attributes
+from models import HandAnalysis
+from services.database import get_valid_attributes
 
 try:
     valid_attributes = get_valid_attributes()

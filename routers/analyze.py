@@ -7,8 +7,8 @@ import sys
 import logging
 from PIL import Image, ImageDraw
 from google import genai
-from api.services.vision import enhance_hand_image, analyze_image
-from api.services.database import fetch_claims
+from services.vision import enhance_hand_image, analyze_image
+from services.database import fetch_claims
 
 logging.basicConfig(filename='api_debug.log', level=logging.INFO)
 
