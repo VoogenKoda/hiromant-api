@@ -19,6 +19,55 @@ class TarotAnalyzeRequest(BaseModel):
     spread_type: str = "ajavoo"
     user_id: str
 
+SPREAD_LAYOUTS = {
+    "ajavoo": {
+        "name": "Ajavoo laotus (Minevik - Olevik - Tulevik)",
+        "count": 3,
+        "pos": ["Minevik", "Olevik", "Tulevik"]
+    },
+    "probleemi": {
+        "name": "Probleemi laotus (Situatsioon - Takistus - Nõuanne)",
+        "count": 3,
+        "pos": ["Situatsioon", "Takistus", "Nõuanne"]
+    },
+    "enesearengu": {
+        "name": "Enesearengu laotus (Keha - Mõistus - Vaim)",
+        "count": 3,
+        "pos": ["Keha", "Mõistus", "Vaim"]
+    },
+    "valiku": {
+        "name": "Valiku laotus (Valik A - Valik B - Mida peaksin tegema?)",
+        "count": 3,
+        "pos": ["Valik A", "Valik B", "Mida peaksin tegema?"]
+    },
+    "suhte": {
+        "name": "Suhtelaotus (Küsija panus - Partneri panus - Suhte dünaamika)",
+        "count": 3,
+        "pos": ["Kuidas küsija suhet näeb", "Kuidas partner suhet näeb", "Suhte dünaamika"]
+    },
+    "armastuse": {
+        "name": "Armastuse laotus (5 kaarti)",
+        "count": 5,
+        "pos": ["Mina", "Partner", "Suhte minevik", "Suhte hetkeseis", "Suhte tulevik"]
+    },
+    "keldi_rist": {
+        "name": "Keldi Rist (10 kaarti)",
+        "count": 10,
+        "pos": [
+            "Olevik / Küsija olukord",
+            "Väljakutse / Ristuv energia",
+            "Teadlikud eesmärgid / Kroon",
+            "Alateadvus / Vundament",
+            "Lähiminevik",
+            "Lähitulevik",
+            "Küsija ise",
+            "Keskkond / Teised inimesed",
+            "Lootused ja hirmud",
+            "Lõpptulemus"
+        ]
+    }
+}
+
 def get_db_connection():
     db_url = os.environ.get("DATABASE_URL")
     if db_url:
@@ -26,12 +75,14 @@ def get_db_connection():
     raise Exception("DATABASE_URL is missing")
 
 @router.get("/draw")
-async def draw_cards():
-    """Tõmbab andmebaasist 3 juhuslikku Taro kaarti."""
+async def draw_cards(spread_type: str = "ajavoo"):
+    """Tõmbab andmebaasist õige arvu juhuslikke Taro kaarte vastavalt laotusele."""
+    layout = SPREAD_LAYOUTS.get(spread_type, SPREAD_LAYOUTS["ajavoo"])
+    count = layout["count"]
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT id, name, img FROM tarot_interpretations ORDER BY RANDOM() LIMIT 3")
+        cur.execute("SELECT id, name, img FROM tarot_interpretations ORDER BY RANDOM() LIMIT %s", (count,))
         rows = cur.fetchall()
         cur.close()
         conn.close()
@@ -47,9 +98,12 @@ async def draw_cards():
 
 @router.post("/analyze")
 async def analyze_tarot(req: TarotAnalyzeRequest):
-    """Võtab vastu 3 kaardi ID-d, loeb andmebaasist tähendused ja saadab Geminile analüüsimiseks."""
-    if len(req.cards) != 3:
-        raise HTTPException(status_code=400, detail="Vaja on täpselt 3 kaarti (Minevik, Olevik, Tulevik)")
+    """Võtab vastu kaardid, loeb andmebaasist tähendused ja saadab Geminile analüüsimiseks."""
+    layout = SPREAD_LAYOUTS.get(req.spread_type, SPREAD_LAYOUTS["ajavoo"])
+    count = layout["count"]
+
+    if len(req.cards) != count:
+        raise HTTPException(status_code=400, detail=f"Vaja on täpselt {count} kaarti selle laotuse jaoks.")
         
     try:
         conn = get_db_connection()
@@ -71,31 +125,6 @@ async def analyze_tarot(req: TarotAnalyzeRequest):
             conn.close()
             raise HTTPException(status_code=402, detail="Sul ei ole piisavalt krediiti. Palun osta Premium pakett.")
         
-        spread_layouts = {
-            "ajavoo": {
-                "name": "Ajavoo laotus (Minevik - Olevik - Tulevik)",
-                "pos": ["Minevik", "Olevik", "Tulevik"]
-            },
-            "probleemi": {
-                "name": "Probleemi laotus (Situatsioon - Takistus - Nõuanne)",
-                "pos": ["Situatsioon", "Takistus", "Nõuanne"]
-            },
-            "enesearengu": {
-                "name": "Enesearengu laotus (Keha - Mõistus - Vaim)",
-                "pos": ["Keha", "Mõistus", "Vaim"]
-            },
-            "valiku": {
-                "name": "Valiku laotus (Valik A - Valik B - Mida peaksin tegema?)",
-                "pos": ["Valik A", "Valik B", "Mida peaksin tegema?"]
-            },
-            "suhte": {
-                "name": "Suhtelaotus (Küsija panus - Partneri panus - Suhte dünaamika)",
-                "pos": ["Kuidas küsija suhet näeb / Mida ta annab", "Kuidas partner suhet näeb / Mida tema annab", "Suhte dünaamika / Kuhu suhe suundub"]
-            }
-        }
-        
-        layout = spread_layouts.get(req.spread_type, spread_layouts["ajavoo"])
-        
         cards_info = []
         for i, card_input in enumerate(req.cards):
             cur.execute("""
@@ -104,7 +133,7 @@ async def analyze_tarot(req: TarotAnalyzeRequest):
             """, (card_input.id,))
             row = cur.fetchone()
             if row:
-                pos = layout["pos"][i] if i < 3 else f"Positsioon {i+1}"
+                pos = layout["pos"][i] if i < len(layout["pos"]) else f"Positsioon {i+1}"
                 reversed_notice = "**TÄHELEPANU: SEE KAART ON TAGURPIDI (REVERSED)**\nKeskendu peamiselt varjatud/hoiatavatele tähendustele või selle kaardi blokeeritud energiale." if card_input.is_reversed else ""
                 cards_info.append(f"""
                 ---
@@ -121,19 +150,20 @@ async def analyze_tarot(req: TarotAnalyzeRequest):
         cur.close()
         conn.close()
         
-        if len(cards_info) != 3:
+        if len(cards_info) != count:
             raise HTTPException(status_code=404, detail="Mõnda kaarti ei leitud andmebaasist")
             
         context_str = "\n".join(cards_info)
+        pos_examples = ", ".join(layout["pos"][:3]) + ("..." if count > 3 else "")
         
         synthesis_prompt = f"""
         Oled väga professionaalne, müstiline ja elutark Taro kaardilugeja. 
-        Kliendile tõmmati 3 kaarti. Valitud ladumise stiil on: {layout["name"]}. 
+        Kliendile tõmmati {count} kaarti. Valitud ladumise stiil on: {layout["name"]}. 
         Allpool on toodud iga kaardi täpsed andmed ja tähendused otse vanadest tarkusteraamatutest vastavalt nende positsioonile laotuses.
         
         Sinu ülesanne on koostada kliendile sügav, empaatiline ja isikupärane eestikeelne kaardilugemise analüüs, toetudes AINULT nendele tähendustele ja sidudes need kokku valitud laotuse loogikaga. 
         Analüüs peab olema kirjutatud ilusasse Markdown formaati (kasuta pealkirju, paksu kirja, tsitaate). 
-        Struktuur peab sisaldama sissejuhatust, iga positsiooni (näiteks {layout["pos"][0]}, {layout["pos"][1]}, {layout["pos"][2]}) lahtiseletamist ja loogilist lõppkokkuvõtet/nõuannet.
+        Struktuur peab sisaldama sissejuhatust, iga positsiooni (näiteks {pos_examples}) lahtiseletamist ja loogilist lõppkokkuvõtet/nõuannet.
         
         KAARDID JA NENDE TÄHENDUSED:
         {context_str}

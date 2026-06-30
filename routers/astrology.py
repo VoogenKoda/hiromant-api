@@ -6,6 +6,8 @@ import datetime
 from google import genai
 import psycopg2
 import logging
+import time
+import json
 
 router = APIRouter()
 # Mtime update

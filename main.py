@@ -3,8 +3,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
+import sys
+
 # Laeme juurkausta .env faili
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+# Lisa api kaust sys.path'i, et saaks rootist uvicorni jooksutada
+sys.path.append(os.path.dirname(__file__))
 
 from routers import analyze, astrology, payments, tarot
 
